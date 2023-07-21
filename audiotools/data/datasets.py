@@ -50,8 +50,9 @@ class AudioLoader:
         ext: List[str] = util.AUDIO_EXTENSIONS,
         shuffle: bool = True,
         shuffle_state: int = 0,
+        source_reader = util.read_sources,
     ):
-        self.audio_lists = util.read_sources(
+        self.audio_lists = source_reader(
             sources, relative_path=relative_path, ext=ext
         )
 
@@ -96,22 +97,8 @@ class AudioLoader:
             )
 
         path = audio_info["path"]
-        signal = AudioSignal.zeros(duration, sample_rate, num_channels)
 
-        if path != "none":
-            if offset is None:
-                signal = AudioSignal.salient_excerpt(
-                    path,
-                    duration=duration,
-                    state=state,
-                    loudness_cutoff=loudness_cutoff,
-                )
-            else:
-                signal = AudioSignal(
-                    path,
-                    offset=offset,
-                    duration=duration,
-                )
+        signal = self.load_sample(state, duration, loudness_cutoff, offset, path, sample_rate, num_channels)
 
         if num_channels == 1:
             signal = signal.to_mono()
@@ -133,6 +120,25 @@ class AudioLoader:
         if self.transform is not None:
             item["transform_args"] = self.transform.instantiate(state, signal=signal)
         return item
+
+    def load_sample(self, state, duration, loudness_cutoff, offset, path, sample_rate, num_channels):
+        signal = AudioSignal.zeros(duration, sample_rate, num_channels)
+        if path != "none":
+            if offset is None:
+                signal = AudioSignal.salient_excerpt(
+                    path,
+                    duration=duration,
+                    state=state,
+                    loudness_cutoff=loudness_cutoff,
+                )
+            else:
+                signal = AudioSignal(
+                    path,
+                    offset=offset,
+                    duration=duration,
+                )
+                
+        return signal
 
 
 def default_matcher(x, y):

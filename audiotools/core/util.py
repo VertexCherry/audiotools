@@ -1,5 +1,6 @@
 import csv
 import glob
+from io import BytesIO
 import math
 import numbers
 import os
@@ -8,15 +9,19 @@ import typing
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict
-from typing import List
+from typing import Dict, Union, IO, List
 
 import numpy as np
 import torch
 import torchaudio
+import torchaudio.io._compat as compat
 from flatten_dict import flatten
 from flatten_dict import unflatten
 
+AudioSourcePathType = typing.Union[str, Path]
+AudioSourceFileType = typing.Union[AudioSourcePathType, IO]
+AudioSourceArrayType = typing.Union[torch.Tensor, np.ndarray]
+AudioSourceAllType = typing.Union[AudioSourceFileType, AudioSourceArrayType]
 
 @dataclass
 class Info:
@@ -30,19 +35,25 @@ class Info:
         return self.num_frames / self.sample_rate
 
 
-def info(audio_path: str):
+def info(audio_source: AudioSourceAllType):
     """Shim for torchaudio.info to make 0.7.2 API match 0.8.0.
 
     Parameters
     ----------
-    audio_path : str
-        Path to audio file.
+    audio_source : AudioSourceAllType
+        Path, array or file-like object.
     """
     # try default backend first, then fallback to soundfile
-    try:
-        info = torchaudio.info(str(audio_path))
-    except:  # pragma: no cover
-        info = torchaudio.backend.soundfile_backend.info(str(audio_path))
+    if isinstance(audio_source, str):
+        try:
+            info = torchaudio.info(str(audio_source))
+        except:  # pragma: no cover
+            info = torchaudio.backend.soundfile_backend.info(str(audio_source))
+    elif isinstance(audio_source, IO):
+        info = compat.info_audio_fileobj(f)
+    else:
+        with BytesIO(audio_source) as f:
+            info = compat.info_audio_fileobj(f)
 
     if isinstance(info, tuple):  # pragma: no cover
         signal_info = info[0]
