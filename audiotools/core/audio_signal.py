@@ -15,6 +15,7 @@ import soundfile
 import torch
 
 from . import util
+import . import audio_types
 from .display import DisplayMixin
 from .dsp import DSPMixin
 from .effects import EffectMixin
@@ -49,7 +50,8 @@ padding_type : str, optional
 """
 STFTParams.__new__.__defaults__ = (None, None, None, None, None)
 
-
+# TODO: Mixin for auraloss??
+# TODO: Mixin for augly
 class AudioSignal(
     EffectMixin,
     LoudnessMixin,
@@ -118,10 +120,9 @@ class AudioSignal(
 
     The above signal is 1 second long, and is also an AudioSignal.
     """
-
     def __init__(
         self,
-        audio_path_or_array: typing.Union[torch.Tensor, str, Path, np.ndarray],
+        audio_path_or_array: audio_types.All_Audio_Types,
         sample_rate: int = None,
         stft_params: STFTParams = None,
         offset: float = 0,
@@ -135,6 +136,8 @@ class AudioSignal(
             audio_path = audio_path_or_array
         elif isinstance(audio_path_or_array, pathlib.Path):
             audio_path = audio_path_or_array
+        elif isinstance(audio_path_or_array, typing.IO):
+            audio_path = audio_path_or_array
         elif isinstance(audio_path_or_array, np.ndarray):
             audio_array = audio_path_or_array
         elif torch.is_tensor(audio_path_or_array):
@@ -142,7 +145,7 @@ class AudioSignal(
         else:
             raise ValueError(
                 "audio_path_or_array must be either a Path, "
-                "string, numpy array, or torch Tensor!"
+                "string, file-like object, numpy array, or torch Tensor!"
             )
 
         self.path_to_file = None
@@ -176,10 +179,11 @@ class AudioSignal(
         """
         return self.path_to_file
 
+
     @classmethod
     def excerpt(
         cls,
-        audio_path: typing.Union[str, Path],
+        audio_path: audio_types.Str_Path_Filelike,
         offset: float = None,
         duration: float = None,
         state: typing.Union[np.random.RandomState, int] = None,
@@ -210,6 +214,7 @@ class AudioSignal(
         --------
         >>> signal = AudioSignal.excerpt("path/to/audio", duration=5)
         """
+        #TODO: TEST
         info = util.info(audio_path)
         total_duration = info.duration
 
@@ -224,10 +229,11 @@ class AudioSignal(
 
         return signal
 
+
     @classmethod
     def salient_excerpt(
         cls,
-        audio_path: typing.Union[str, Path],
+        audio_path: audio_types.Str_Path_Filelike,
         loudness_cutoff: float = None,
         num_tries: int = 8,
         state: typing.Union[np.random.RandomState, int] = None,
@@ -271,7 +277,10 @@ class AudioSignal(
                 duration=5
             )
         """
+        #TODO: Test filelike
+        
         state = util.random_state(state)
+        excerpt = None
         if loudness_cutoff is None:
             excerpt = cls.excerpt(audio_path, state=state, **kwargs)
         else:
@@ -470,9 +479,10 @@ class AudioSignal(
         return batched_signal
 
     # I/O
+    # TODO : Test
     def load_from_file(
         self,
-        audio_path: typing.Union[str, Path],
+        audio_path: audio_types.Str_Path_Filelike,
         offset: float,
         duration: float,
         device: str = "cpu",
@@ -525,7 +535,7 @@ class AudioSignal(
 
     def load_from_array(
         self,
-        audio_array: typing.Union[torch.Tensor, np.ndarray],
+        audio_array: audio_types.Audio_Array_Type,
         sample_rate: int,
         device: str = "cpu",
     ):

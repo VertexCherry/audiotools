@@ -17,11 +17,8 @@ import torchaudio
 import torchaudio.io._compat as compat
 from flatten_dict import flatten
 from flatten_dict import unflatten
+from . import audio_types
 
-AudioSourcePathType = typing.Union[str, Path]
-AudioSourceFileType = typing.Union[AudioSourcePathType, IO]
-AudioSourceArrayType = typing.Union[torch.Tensor, np.ndarray]
-AudioSourceAllType = typing.Union[AudioSourceFileType, AudioSourceArrayType]
 
 @dataclass
 class Info:
@@ -35,7 +32,7 @@ class Info:
         return self.num_frames / self.sample_rate
 
 
-def info(audio_source: AudioSourceAllType):
+def info(audio_source: audio_types.Str_Path_Filelike):
     """Shim for torchaudio.info to make 0.7.2 API match 0.8.0.
 
     Parameters
@@ -43,6 +40,7 @@ def info(audio_source: AudioSourceAllType):
     audio_source : AudioSourceAllType
         Path, array or file-like object.
     """
+    # TODO: Test this function
     # try default backend first, then fallback to soundfile
     if isinstance(audio_source, str):
         try:
